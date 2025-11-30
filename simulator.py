@@ -98,7 +98,7 @@ class QuantumSimulator:
 
         full_matrix = np.array([[1.0]], dtype=complex)
 
-        for qubit in range(n-1, -1, -1):
+        for qubit in range(n):
             if qubit == target_qubit:
                 full_matrix = np.kron(full_matrix, gate_matrix)
             else: 
@@ -211,6 +211,7 @@ def run_simulation(circuit_file, noise_mode=False, error_rate=0.0):
     for i, gate in enumerate(gates, 1):
         print(f"\n[Gate {i}]/{len(gates)}", end=" ")
         sim.apply_gate(gate)
+        sim.print_state()
     
     print("\n\nFinal Gate")
     sim.print_state()

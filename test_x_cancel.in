@@ -1,0 +1,4 @@
+circuit: 1 qubit
+X(0)
+X(0)
+measure 0

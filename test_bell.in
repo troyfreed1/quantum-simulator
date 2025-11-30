@@ -1,0 +1,4 @@
+circuit: 2 qubits
+H(0)
+CNOT(0,1)
+measure 0..1

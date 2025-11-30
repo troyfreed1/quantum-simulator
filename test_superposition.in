@@ -1,0 +1,3 @@
+circuit: 1 qubit
+H(0)
+measure 0
