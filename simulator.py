@@ -80,6 +80,7 @@ class CircuitParser:
         return self.num_qubits, self.gates, self.measurements
 
 class QuantumSimulator:
+    # Declare all the aspects of our quantim simulator
     def __init__(self, num_qubits, noise_prob=0.0):
         self.num_qubits = num_qubits
         self.noise_prob = noise_prob
@@ -91,13 +92,15 @@ class QuantumSimulator:
         print(f"Initialized {num_qubits}-qubit system")
         print(f"State vector size: {self.num_states}")
         print(f"Initial state: |{'0' * num_qubits}>")
+    # Return the state of the vector
     def get_state_vector(self):
         return self.state_vector.copy()
+    # Apply a single qubit gate
+    # We use this in our gate applications to apply the gates we designed
     def apply_single_qubit_gate(self, gate_matrix, target_qubit):
         n = self.num_qubits
 
         full_matrix = np.array([[1.0]], dtype=complex)
-
         for qubit in range(n):
             if qubit == target_qubit:
                 full_matrix = np.kron(full_matrix, gate_matrix)
@@ -105,16 +108,20 @@ class QuantumSimulator:
                 identity = np.eye(2, dtype=complex)
                 full_matrix = np.kron(full_matrix, identity)
         self.state_vector = full_matrix @ self.state_vector
+    # We apply the x gate by creating a complex array and using our apply
+    # single qubit gate
     def apply_X_gate(self, target_qubit):
         X = np.array([[0,1],
                      [1,0]], dtype=complex)
         self.apply_single_qubit_gate(X, target_qubit)
         #print(f"Applied X gate to qubit {target_qubit}")
+    # We do the same above for H gate
     def apply_H_gate(self, target_qubit):
         H = (1/np.sqrt(2)) * np.array([[1, 1],
                                        [1, -1]], dtype=complex)
         self.apply_single_qubit_gate(H, target_qubit)
         #print(f"Applied H gate to qubit {target_qubit}")
+    # We do the same above for our CNOT
     def apply_CNOT_gate(self, control_qubit, target_qubit):
         new_state = np.zeros_like(self.state_vector)
         for i in range(self.num_states):
@@ -127,6 +134,7 @@ class QuantumSimulator:
             new_state[new_index] = self.state_vector[i]
         self.state_vector = new_state
         #print(f"Applied CNOT gate: control={control_qubit}, target={target_qubit}")
+    # This is how we actually apply the gates we pull from our parser
     def apply_gate(self, gate):
         gate_type = gate['type']
         qubits = gate['qubits']
@@ -140,6 +148,7 @@ class QuantumSimulator:
         else: 
             print(f"Warning: Unknown gate type {gate_type}")
         self.apply_bit_flip_noise()
+    # We measure our qubits
     def measure(self, qubits_to_measure):
         probabilities = np.abs(self.state_vector) ** 2
 
@@ -147,17 +156,17 @@ class QuantumSimulator:
         results = {}
 
         print(f"Measuring qubits {qubits_to_measure} ({num_shots} shots)")
-
+        # Measure the qubits for the amount of shots in the range of our total shots
         for shot in range(num_shots):
             measured_state_index = np.random.choice(
                 self.num_states,
                 p=probabilities
             )
-
+            # We put our bits back into binary format
             full_binary = format(measured_state_index, f'0{self.num_qubits}b')
 
             measured_bits = ''.join([full_binary[q] for q in qubits_to_measure])
-
+            # If the measured bit is in the results then we add by one else we set it to 1
             if measured_bits in results:
                 results[measured_bits] += 1
             else: 
@@ -168,11 +177,16 @@ class QuantumSimulator:
             probability = count / num_shots
             print(f"|{state}> : {count}/{num_shots} = {probability:.1%}")
         return results
+    # Here we just measure all the qubits
     def measure_all(self):
         return self.measure(list(range(self.num_qubits)))
+    # Here is where we apply quantum noise by using a random probability set in our noise_prob
+    # By default it is set to 0.0
     def apply_bit_flip_noise(self):
         if self.noise_prob == 0.0:
             return
+        # Here we are checking if a random number is less than our probability and if it is then we 
+        # we simulate quantum noise by applying a flip on the qubit
         for qubit in range(self.num_qubits):
             if np.random.random() < self.noise_prob:
                 print(f"[Noise] bit flip on qubit {qubit}")
@@ -228,6 +242,7 @@ def run_simulation(circuit_file, noise_mode=False, error_rate=0.0):
         print("\nNo measurement specified")
     return sim, results if measurements else None
 if __name__ == "__main__":
+    # Here is where we instantiate our CLI
     parser = argparse.ArgumentParser(
         description="Quantum Circuit Simulator",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -235,14 +250,15 @@ if __name__ == "__main__":
         "python simulator.py -noise circuit.in -error 0.01" \
         "python simulator.py -noise circuit.in -error 0.1"
     )
-
+    # We add our arguments here
+    # The arguments are circuit_file, -noise or -noiseless and -error
     parser.add_argument('circuit_file', help='Path to circuit input file (.in)')
     mode_group = parser.add_mutually_exclusive_group(required=True)
     mode_group.add_argument('-noiseless', action='store_true', help='Run noiseless simulation')
     mode_group.add_argument('-noise', action='store_true', help='Run noisy simulation')
 
     parser.add_argument('-error', type=float, default=0.01, help='Bit-flip error probability (default: 0.01)')
-
+    # Here we parse the cli arguments and then below use if blocks to trigger actions based on the flags
     args = parser.parse_args()
 
     if args.noise and not (0 <= args.error <= 1):

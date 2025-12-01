@@ -3,7 +3,7 @@ import sys
 import os
 import numpy as np
 from simulator import CircuitParser, QuantumSimulator
-
+# Here we measure the amount of time it takes to run the amount of qubits
 def benchmark_qubits():
     print("Benchmark 1: Runtime vs Number of Quibits")
 
@@ -30,6 +30,7 @@ def benchmark_qubits():
         results.append((n, 2**n, elapsed, memory_mb))
     print()
     return results
+# This is where we measure the amount of time it takes to run 10 qubits on a different amount of gates
 def benchmark_gates():
     print("Benchmark 2: Runtime vs Number of gates")
 
@@ -57,6 +58,7 @@ def benchmark_gates():
         results.append((num_gates, elapsed))
     print()
     return results
+# Here we test the time it takes to run our benchmark files
 def benchmark_circuit_file(circuit_file):
     print(f"\nBenchmarking circuit: {circuit_file}")
 
@@ -79,6 +81,7 @@ def benchmark_circuit_file(circuit_file):
 
     return elapsed
 if __name__ == "__main__":
+    # this is where we actually run the benchmarks
     print("Quantum Simulator Performance Benchmarks")
 
     print("\n\nStarting benchmarks:")
