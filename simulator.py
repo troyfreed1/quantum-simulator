@@ -83,9 +83,9 @@ class QuantumSimulator:
     # Declare all the aspects of our quantim simulator
     def __init__(self, num_qubits, noise_prob=0.0):
         self.num_qubits = num_qubits
-        self.noise_prob = noise_prob
         self.num_states = 2 ** num_qubits
-        
+        self.single_qubit_error = noise_prob
+        self.double_qubit_error = noise_prob * 10
         self.state_vector = np.zeros(self.num_states, dtype=complex)
         self.state_vector[0] = 1.0
 
@@ -100,14 +100,15 @@ class QuantumSimulator:
     def apply_single_qubit_gate(self, gate_matrix, target_qubit):
         n = self.num_qubits
 
-        full_matrix = np.array([[1.0]], dtype=complex)
-        for qubit in range(n):
-            if qubit == target_qubit:
-                full_matrix = np.kron(full_matrix, gate_matrix)
-            else: 
-                identity = np.eye(2, dtype=complex)
-                full_matrix = np.kron(full_matrix, identity)
-        self.state_vector = full_matrix @ self.state_vector
+        state = self.state_vector.reshape([2] * n)
+
+        state = np.moveaxis(state, target_qubit, -1)
+
+        state = np.tensordot(state, gate_matrix, axes=[[-1], [0]])
+
+        state = np.moveaxis(state, -1, target_qubit)
+
+        self.state_vector = state.flatten()
     # We apply the x gate by creating a complex array and using our apply
     # single qubit gate
     def apply_X_gate(self, target_qubit):
@@ -141,13 +142,15 @@ class QuantumSimulator:
 
         if gate_type == 'X':
             self.apply_X_gate(qubits[0])
+            self.apply_bit_flip_noise([qubits[0]], is_two_qubit=False)
         elif gate_type == 'H':
             self.apply_H_gate(qubits[0])
+            self.apply_bit_flip_noise([qubits[0]], is_two_qubit=False)
         elif gate_type == 'CNOT':
             self.apply_CNOT_gate(qubits[0], qubits[1])
+            self.apply_bit_flip_noise([qubits[0], qubits[1]], is_two_qubit=True)
         else: 
             print(f"Warning: Unknown gate type {gate_type}")
-        self.apply_bit_flip_noise()
     # We measure our qubits
     def measure(self, qubits_to_measure):
         probabilities = np.abs(self.state_vector) ** 2
@@ -156,6 +159,7 @@ class QuantumSimulator:
         results = {}
 
         print(f"Measuring qubits {qubits_to_measure} ({num_shots} shots)")
+
         # Measure the qubits for the amount of shots in the range of our total shots
         for shot in range(num_shots):
             measured_state_index = np.random.choice(
@@ -172,25 +176,26 @@ class QuantumSimulator:
             else: 
                 results[measured_bits] = 1
             
-        print("\nMeasurement Results:")
-        for state, count in sorted(results.items()):
-            probability = count / num_shots
-            print(f"|{state}> : {count}/{num_shots} = {probability:.1%}")
         return results
     # Here we just measure all the qubits
     def measure_all(self):
         return self.measure(list(range(self.num_qubits)))
     # Here is where we apply quantum noise by using a random probability set in our noise_prob
     # By default it is set to 0.0
-    def apply_bit_flip_noise(self):
-        if self.noise_prob == 0.0:
+    def apply_bit_flip_noise(self, affected_qubits, is_two_qubit=False):
+        error = self.double_qubit_error if is_two_qubit else self.single_qubit_error
+
+        if error == 0.0:
             return
-        # Here we are checking if a random number is less than our probability and if it is then we 
-        # we simulate quantum noise by applying a flip on the qubit
-        for qubit in range(self.num_qubits):
-            if np.random.random() < self.noise_prob:
-                print(f"[Noise] bit flip on qubit {qubit}")
-                self.apply_X_gate(qubit)    
+
+        for qubit in affected_qubits:
+            if np.random.random() < error:
+                print(f"Noise bit flip on qubit {qubit}")
+                temp_noise = self.single_qubit_error
+                self.single_qubit_error = 0.0
+                self.apply_X_gate(qubit)
+                self.single_qubit_error = temp_noise
+         
     def print_state(self):
         print("\n Current Quantum State:")
         for i, amplitude in enumerate(self.state_vector):
@@ -234,7 +239,7 @@ def run_simulation(circuit_file, noise_mode=False, error_rate=0.0):
         print("Measurement")
         results = sim.measure(measurements)
 
-        print("\n\nResults Summary")
+        print("\nResults Summary")
         for state, count in sorted(results.items()):
             bar = '█' * int(count / 10)
             print(f"|{state}> : {count:4d} {bar}")
