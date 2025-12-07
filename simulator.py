@@ -149,7 +149,7 @@ class QuantumSimulator:
         elif gate_type == 'CNOT':
             self.apply_CNOT_gate(qubits[0], qubits[1])
             self.apply_bit_flip_noise([qubits[0], qubits[1]], is_two_qubit=True)
-        else: 
+        else:
             print(f"Warning: Unknown gate type {gate_type}")
     # We measure our qubits
     def measure(self, qubits_to_measure):
@@ -173,9 +173,9 @@ class QuantumSimulator:
             # If the measured bit is in the results then we add by one else we set it to 1
             if measured_bits in results:
                 results[measured_bits] += 1
-            else: 
+            else:
                 results[measured_bits] = 1
-            
+
         return results
     # Here we just measure all the qubits
     def measure_all(self):
@@ -195,7 +195,7 @@ class QuantumSimulator:
                 self.single_qubit_error = 0.0
                 self.apply_X_gate(qubit)
                 self.single_qubit_error = temp_noise
-         
+
     def print_state(self):
         print("\n Current Quantum State:")
         for i, amplitude in enumerate(self.state_vector):
@@ -205,11 +205,20 @@ class QuantumSimulator:
 
 
 # Test the parser with the example circuit
-def run_simulation(circuit_file, noise_mode=False, error_rate=0.0):
+def run_simulation(circuit_file, noise_mode=False, error_rate=0.0, custom_qubits=None):
     print(f"Loading circuit: {circuit_file}")
     parser = CircuitParser(circuit_file)
 
     num_qubits, gates, measurements = parser.parse()
+
+    # Override qubit count if custom_qubits specified
+    if custom_qubits is not None:
+        if custom_qubits < num_qubits:
+            print(f"\nWarning: Custom qubit count ({custom_qubits}) is less than required qubits ({num_qubits})")
+            print(f"Using {num_qubits} qubits instead\n")
+        else:
+            print(f"\nOverriding qubit count: {num_qubits} -> {custom_qubits}")
+            num_qubits = custom_qubits
 
     print(f"\nCircuit Summary:")
     print(f" Qubits: {num_qubits}")
@@ -219,10 +228,10 @@ def run_simulation(circuit_file, noise_mode=False, error_rate=0.0):
     if noise_mode:
         noise_prob = error_rate
         print(f"\n Mode: Noise (error rate = {error_rate})")
-    else: 
+    else:
         noise_prob = 0.0
         print(f" Mode: Noiseless")
-    
+
     print("\n\nSimulation")
 
     sim = QuantumSimulator(num_qubits, noise_prob=noise_prob)
@@ -231,7 +240,7 @@ def run_simulation(circuit_file, noise_mode=False, error_rate=0.0):
         print(f"\n[Gate {i}]/{len(gates)}", end=" ")
         sim.apply_gate(gate)
         sim.print_state()
-    
+
     print("\n\nFinal Gate")
     sim.print_state()
 
@@ -251,30 +260,35 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Quantum Circuit Simulator",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="python simulator.py -noiseless circuit.in" \
-        "python simulator.py -noise circuit.in -error 0.01" \
-        "python simulator.py -noise circuit.in -error 0.1"
+        epilog="Examples:\n" \
+        "  python simulator.py -noiseless circuit.in\n" \
+        "  python simulator.py -noise circuit.in -error 0.01\n" \
+        "  python simulator.py -noiseless circuit.in -qubits 10"
     )
     # We add our arguments here
-    # The arguments are circuit_file, -noise or -noiseless and -error
+    # The arguments are circuit_file, -noise or -noiseless, -error, and optional -qubits
     parser.add_argument('circuit_file', help='Path to circuit input file (.in)')
     mode_group = parser.add_mutually_exclusive_group(required=True)
     mode_group.add_argument('-noiseless', action='store_true', help='Run noiseless simulation')
     mode_group.add_argument('-noise', action='store_true', help='Run noisy simulation')
 
     parser.add_argument('-error', type=float, default=0.01, help='Bit-flip error probability (default: 0.01)')
+    parser.add_argument('-qubits', type=int, default=None, help='Number of qubits (overrides circuit file specification)')
     # Here we parse the cli arguments and then below use if blocks to trigger actions based on the flags
     args = parser.parse_args()
 
     if args.noise and not (0 <= args.error <= 1):
         parser.error("Error rate must be between 0 and 1")
+    if args.qubits is not None and args.qubits < 1:
+        parser.error("Number of qubits must be at least 1")
     if args.noiseless and args.error != 0.01:
         print("Warning: -error flag ignored in noiseless mode\n")
     try:
         run_simulation(
             circuit_file=args.circuit_file,
             noise_mode=args.noise,
-            error_rate=args.error if args.noise else 0.0
+            error_rate=args.error if args.noise else 0.0,
+            custom_qubits=args.qubits
         )
     except FileNotFoundError:
         print(f"Error: Circuit file '{args.circuit_file} not found'")

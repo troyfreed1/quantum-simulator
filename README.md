@@ -13,16 +13,33 @@ A quantum circuit simulator that takes an input file and outputs data related to
 CD into the directory after cloning the github. Then create a virtual environment and install Numpy
 
 # Usage
-- Noiseless: python simulator.py -noiseless <circuit_file>
-- Noisy: python simulator.py -noise <circuit_file> -error <probability>
+- Noiseless: `python simulator.py -noiseless <circuit_file>`
+- Noisy: `python simulator.py -noise <circuit_file> -error <probability>`
+- Custom Qubits: `python simulator.py -noiseless <circuit_file> -qubits <number>`
+
+## Optional Flags
+- `-qubits N`: Override the number of qubits specified in the circuit file (useful for testing performance scaling)
 
 # Examples
-### The below command runs the noiseless test_circuit.in
+### Run noiseless simulation
+```bash
 python simulator.py -noiseless test_circuit.in
-### The command below runs the noisy test_bell.in file with a 0.01 error rate
+```
+
+### Run noisy simulation with 1% error rate
+```bash
 python simulator.py -noise test_bell.in -error 0.01
-### The command below runs the help command and shows more information about the inputs
+```
+
+### Run with custom qubit count (for performance testing)
+```bash
+python simulator.py -noiseless test_bell.in -qubits 10
+```
+
+### Show help and all available options
+```bash
 python simulator.py --help
+```
 
 # Circuit Input Format
 
@@ -62,7 +79,7 @@ measure 0..1
 ```
 
 Output Noiseless:
-``` 
+```
 Loading circuit: test_bell.in
 Circuit has 2 qubits
 Added gate: H on qubit 0
@@ -135,7 +152,7 @@ Initial state: |00>
 
 Applying gates...
 
-[Gate 1]/2 
+[Gate 1]/2
  Current Quantum State:
 |00> : 0.7071+0.0000j
 |10> : 0.7071+0.0000j
