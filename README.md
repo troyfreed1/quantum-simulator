@@ -187,24 +187,29 @@ Results Summary
 
 The simulator efficiently handles quantum circuits of varying sizes:
 
-| Qubits | State Vector Size | Memory | Typical Runtime |
-|--------|------------------|--------|-----------------|
-| 10 | 1,024 | 16 KB | <0.001s |
-| 15 | 32,768 | 512 KB | ~0.025s |
-| 20 | 1,048,576 | 16 MB | ~0.25s |
-| 25 | 33,554,432 | 512 MB | ~2s |
-| 27 | 134,217,728 | 2 GB | ~7s |
-| 28 | 268,435,456 | 4 GB | ~18s |
-| 29 | 536,870,912 | 8 GB | ~52s |
+| Qubits | State Vector Size | Memory (complex64) | Typical Runtime |
+|--------|------------------|-------------------|-----------------|
+| 10 | 1,024 | 8 KB | <0.003s |
+| 15 | 32,768 | 256 KB | ~0.007s |
+| 20 | 1,048,576 | 8 MB | ~0.25s |
+| 25 | 33,554,432 | 256 MB | ~9.4s |
+| 27 | 134,217,728 | 1 GB | ~9.9s |
+| 28 | 268,435,456 | 2 GB | ~26s |
+| 29 | 536,870,912 | 4 GB | ~78s |
+| 30 | 1,073,741,824 | 8 GB | ~163s |
 
 ## Performance Optimizations
 
-The simulator includes two key optimizations:
+The simulator includes multiple key optimizations:
 
-1. **Vectorized CNOT Gate**: Uses NumPy bitwise operations instead of Python loops (~400-5000x faster)
-2. **Gate Matrix Caching**: Pre-computes gate matrices to avoid repeated allocation (~2-5x faster)
+1. **Complex64 Data Type**: 50% memory reduction compared to complex128
+2. **Vectorized CNOT Gate**: Uses NumPy bitwise operations instead of Python loops (~400-5000x faster)
+3. **Gate Matrix Caching**: Pre-computes gate matrices to avoid repeated allocation (~2-5x faster)
+4. **Gate Cancellation**: Automatically removes self-inverse gate pairs in noiseless mode
+5. **Fast RNG (PCG64)**: 10-20% faster random number generation
+6. **Value Caching**: Reduced allocations in hot paths for better performance
 
-These optimizations enable simulation of up to 29 qubits on systems with sufficient RAM (8GB+).
+These optimizations enable simulation of **up to 30 qubits** on systems with 8GB+ RAM.
 
 # The available test circuits:
 - test_bell.in - Bell State

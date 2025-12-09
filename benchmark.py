@@ -5,7 +5,7 @@ import numpy as np
 from simulator import CircuitParser, QuantumSimulator
 # Here we measure the amount of time it takes to run the amount of qubits
 def benchmark_qubits():
-    print("Benchmark 1: Runtime vs Number of Quibits")
+    print("Benchmark 1: Runtime vs Number of Qubits")
 
     print("Circuit: apply H gate to all qubits")
 
@@ -18,13 +18,13 @@ def benchmark_qubits():
 
         for qubit in range(n):
             sim.apply_H_gate(qubit)
-        
+
         sim.measure_all()
 
         end_time = time.time()
         elapsed = end_time - start_time
 
-        memory_mb = (2 ** n) * 16 / (1024 ** 2)
+        memory_mb = (2 ** n) * 8 / (1024 ** 2)  # complex64 = 8 bytes
 
         print(f"Qubits: {n:<10} Possible Qubit Comb: {2**n:<15} Elapsed: {elapsed:<12.4f} Memory Used:{memory_mb:<12.2f}")
         results.append((n, 2**n, elapsed, memory_mb))
@@ -73,7 +73,7 @@ def benchmark_circuit_file(circuit_file):
         sim.apply_gate(gate)
     if measurements:
         sim.measure(measurements)
-    
+
     end_time = time.time()
     elapsed = end_time - start_time
     print(f"Time: {elapsed:.4f} seconds")
@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     test_circuits = [
         'test_bell.in',
-        'test_circuit',
+        'test_circuit.in',
         'test_ghz.in'
     ]
 
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     print("- State vector size: O(2^n) where n = number of qubits")
     print("- Single-qubit gate: O(2^n) matrix-vector multiplication")
     print("- Two-qubit gate: O(2^n) state transformation")
-    print("- Memory usage: O(2^n) complex numbers")
+    print("- Memory usage: O(2^n) complex numbers (complex64 = 8 bytes each)")
     print("\nScalability:")
     if len(qubit_results) >= 2:
         # Compare last two measurements

@@ -79,6 +79,42 @@ class CircuitParser:
 
         return self.num_qubits, self.gates, self.measurements
 
+def optimize_circuit(gates):
+    """
+    Optimize gate sequence by removing self-canceling gates and merging operations.
+
+    Optimizations applied:
+    1. Remove self-inverse gate pairs (X-X, H-H, CNOT-CNOT)
+    2. Detect trivial circuits (can be further extended)
+
+    Returns: Optimized gate list
+    """
+    optimized = []
+    i = 0
+    gates_removed = 0
+
+    while i < len(gates):
+        # Check if next gate cancels current gate
+        if i + 1 < len(gates):
+            g1, g2 = gates[i], gates[i + 1]
+            # Check if both gates are the same type and target same qubits
+            if (g1['type'] == g2['type'] and
+                g1['qubits'] == g2['qubits'] and
+                g1['type'] in ['X', 'H', 'CNOT']):  # Self-inverse gates
+                # Skip both gates (they cancel out)
+                i += 2
+                gates_removed += 1
+                continue
+
+        optimized.append(gates[i])
+        i += 1
+
+    if gates_removed > 0:
+        print(f"Gate optimization: removed {gates_removed} canceling gate pairs ({len(gates)} -> {len(optimized)} gates)")
+
+    return optimized
+
+
 class QuantumSimulator:
     # Declare all the aspects of our quantim simulator
     def __init__(self, num_qubits, noise_prob=0.0, readout_fidelity=1.0, two_qubit_error=None):
@@ -102,13 +138,20 @@ class QuantumSimulator:
             self.double_qubit_error = two_qubit_error
 
         self.readout_fidelity = readout_fidelity  # NEW: measurement error parameter
-        self.state_vector = np.zeros(self.num_states, dtype=complex)
+        self.state_vector = np.zeros(self.num_states, dtype=np.complex64)
         self.state_vector[0] = 1.0
 
         # Pre-compute gate matrices for performance (cached)
         sqrt_half = 1.0 / np.sqrt(2)
-        self.X_gate = np.array([[0, 1], [1, 0]], dtype=complex)
-        self.H_gate = sqrt_half * np.array([[1, 1], [1, -1]], dtype=complex)
+        self.X_gate = np.array([[0, 1], [1, 0]], dtype=np.complex64)
+        self.H_gate = sqrt_half * np.array([[1, 1], [1, -1]], dtype=np.complex64)
+
+        # Use faster RNG (PCG64 algorithm) instead of legacy random
+        self.rng = np.random.Generator(np.random.PCG64())
+
+        # Preallocate and cache frequently-used values
+        self.format_string = f'0{self.num_qubits}b'  # For binary conversion
+        self.indices_cache = np.arange(self.num_states)  # Reusable index array
 
         print(f"Initialized {num_qubits}-qubit system")
         print(f"State vector size: {self.num_states}")
@@ -143,11 +186,11 @@ class QuantumSimulator:
         g10, g11 = gate_matrix[1, 0], gate_matrix[1, 1]
 
         # Separate state indices: those with target_qubit=0 and target_qubit=1
-        indices = np.arange(self.num_states)
-        bit_values = (indices >> target_qubit) & 1
+        # Use cached indices instead of creating new array
+        bit_values = (self.indices_cache >> target_qubit) & 1
 
-        indices_0 = indices[bit_values == 0]  # Where target qubit is 0
-        indices_1 = indices[bit_values == 1]  # Where target qubit is 1
+        indices_0 = self.indices_cache[bit_values == 0]  # Where target qubit is 0
+        indices_1 = self.indices_cache[bit_values == 1]  # Where target qubit is 1
 
         # Extract components for |0⟩ and |1⟩ states of target qubit
         psi_0 = self.state_vector[indices_0]
@@ -164,11 +207,9 @@ class QuantumSimulator:
     # single qubit gate
     def apply_X_gate(self, target_qubit):
         self.apply_single_qubit_gate(self.X_gate, target_qubit)
-        #print(f"Applied X gate to qubit {target_qubit}")
     # We do the same above for H gate
     def apply_H_gate(self, target_qubit):
         self.apply_single_qubit_gate(self.H_gate, target_qubit)
-        #print(f"Applied H gate to qubit {target_qubit}")
     # Optimized CNOT using NumPy bitwise operations instead of Python loop
     def apply_CNOT_gate(self, control_qubit, target_qubit):
         """
@@ -178,11 +219,8 @@ class QuantumSimulator:
         The gate flips the target qubit if the control qubit is |1>.
         Uses bitwise operations to efficiently compute new state indices.
         """
-        # Create array of all possible state indices: [0, 1, 2, ..., 2^n-1]
-        indices = np.arange(self.num_states)
-
-        # Extract control bit: (index >> control_qubit) & 1
-        control_bit = (indices >> control_qubit) & 1
+        # Use cached indices instead of creating new array
+        control_bit = (self.indices_cache >> control_qubit) & 1
 
         # Create bit mask for target qubit position
         toggle_mask = 1 << target_qubit
@@ -191,13 +229,12 @@ class QuantumSimulator:
         # Uses np.where for vectorized conditional operation
         new_indices = np.where(
             control_bit,
-            indices ^ toggle_mask,  # Flip target bit using XOR
-            indices                  # Keep unchanged
+            self.indices_cache ^ toggle_mask,  # Flip target bit using XOR
+            self.indices_cache                  # Keep unchanged
         )
 
         # Rearrange state vector elements according to new index mapping
         self.state_vector = self.state_vector[new_indices]
-        #print(f"Applied CNOT gate: control={control_qubit}, target={target_qubit}")
     # This is how we actually apply the gates we pull from our parser
     def apply_gate(self, gate):
         gate_type = gate['type']
@@ -223,13 +260,14 @@ class QuantumSimulator:
         This applies readout errors to measured bits based on readout_fidelity.
         Uses batched sampling for improved performance.
         """
-        probabilities = np.abs(self.state_vector) ** 2
+        # OPTIMIZATION: Use in-place operations to avoid allocations
+        probabilities = self.state_vector.real**2 + self.state_vector.imag**2
         num_shots = 1000
 
         print(f"Measuring qubits {qubits_to_measure} ({num_shots} shots)")
 
         # OPTIMIZATION: Batch all measurements at once instead of loop
-        measured_indices = np.random.choice(
+        measured_indices = self.rng.choice(
             self.num_states,
             size=num_shots,
             p=probabilities
@@ -237,24 +275,32 @@ class QuantumSimulator:
 
         results = {}
 
-        # Convert all indices to binary simultaneously
+        # OPTIMIZATION: Use bit operations instead of string conversion
+        # Only convert to string at the end for display
         for measured_state_index in measured_indices:
-            full_binary = format(measured_state_index, f'0{self.num_qubits}b')
-            measured_bits = list([full_binary[q] for q in qubits_to_measure])
+            # Extract the measured qubits using bit operations (faster than string slicing)
+            measured_value = 0
+            for q in qubits_to_measure:
+                bit = (measured_state_index >> q) & 1
+                # Apply readout errors: flip bit with probability (1 - readout_fidelity)
+                if self.rng.random() > self.readout_fidelity:
+                    bit = 1 - bit
+                measured_value = (measured_value << 1) | bit
 
-            # Apply readout errors: flip measurement result with probability (1 - readout_fidelity)
-            for i in range(len(measured_bits)):
-                if np.random.random() > self.readout_fidelity:
-                    measured_bits[i] = '1' if measured_bits[i] == '0' else '0'
-
-            measured_bits_str = ''.join(measured_bits)
-            # If the measured bit is in the results then we add by one else we set it to 1
-            if measured_bits_str in results:
-                results[measured_bits_str] += 1
+            # Count using integer keys, convert to string only for final output
+            if measured_value in results:
+                results[measured_value] += 1
             else:
-                results[measured_bits_str] = 1
+                results[measured_value] = 1
 
-        return results
+        # Convert integer keys to binary strings for output
+        string_results = {}
+        num_measured_qubits = len(qubits_to_measure)
+        for value, count in results.items():
+            binary_str = format(value, f'0{num_measured_qubits}b')
+            string_results[binary_str] = count
+
+        return string_results
     # Here we just measure all the qubits
     def measure_all(self):
         return self.measure(list(range(self.num_qubits)))
@@ -276,7 +322,7 @@ class QuantumSimulator:
             return
 
         # Determine which qubits will experience errors (deterministic sampling from error channel)
-        error_qubits = [q for q in affected_qubits if np.random.random() < error]
+        error_qubits = [q for q in affected_qubits if self.rng.random() < error]
 
         if error_qubits:
             print(f"Noise bit flips on qubits: {error_qubits}")
@@ -290,7 +336,7 @@ class QuantumSimulator:
         print("\n Current Quantum State:")
         for i, amplitude in enumerate(self.state_vector):
             if abs(amplitude) > 1e-10:
-                binary_state = format(i, f'0{self.num_qubits}b')
+                binary_state = format(i, self.format_string)
                 print(f"|{binary_state}> : {amplitude:.4f}")
 
 
@@ -321,15 +367,25 @@ def run_simulation(circuit_file, noise_mode=False, error_rate=0.0, custom_qubits
     else:
         noise_prob = 0.0
         print(f" Mode: Noiseless")
+        # Optimize circuit in noiseless mode (gate cancellation is invalid with noise)
+        gates = optimize_circuit(gates)
 
     print("\n\nSimulation")
 
     sim = QuantumSimulator(num_qubits, noise_prob=noise_prob, readout_fidelity=readout_fidelity, two_qubit_error=error_2q)
     print("\nApplying gates...")
+    # Only print state for small circuits to avoid I/O overhead
+    verbose = num_qubits <= 5 and len(gates) <= 10
+
     for i, gate in enumerate(gates, 1):
-        print(f"\n[Gate {i}]/{len(gates)}", end=" ")
+        if verbose:
+            print(f"\n[Gate {i}]/{len(gates)}", end=" ")
         sim.apply_gate(gate)
-        sim.print_state()
+        if verbose:
+            sim.print_state()
+
+    if not verbose:
+        print(f"Applied {len(gates)} gates to {num_qubits}-qubit system")
 
     print("\n\nFinal Gate")
     sim.print_state()

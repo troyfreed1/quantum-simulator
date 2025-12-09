@@ -1,0 +1,11 @@
+// Test circuit to demonstrate gate cancellation optimization
+circuit: 3 qubits
+H(0)
+H(0)
+X(1)
+X(1)
+H(2)
+CNOT(0,1)
+CNOT(0,1)
+H(2)
+measure 0..2
