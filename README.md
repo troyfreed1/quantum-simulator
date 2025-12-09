@@ -219,3 +219,14 @@ These optimizations enable simulation of **up to 30 qubits** on systems with 8GB
 - test_x_cancel.in - X gate self inverse test
 - test_h_cancel.in - H gate self inverse test
 - test_circuit.in - Deutsch-Jozsa algorithm
+- circuit1.in - Deutsch-Jozsa for balanced f(x) = x0 XOR x1 (benchmark)
+- circuit2.in - Scalability test with 11 qubits (benchmark)
+
+## Benchmark Validation
+
+To validate that benchmark circuits produce correct outputs:
+```bash
+python validate_benchmarks.py
+```
+
+This will test circuit1.in and circuit2.in against their expected outputs (circuit1.out, circuit2.out).

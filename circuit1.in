@@ -1,0 +1,12 @@
+// Deutsch–Jozsa for balanced f(x) = x0 XOR x1
+circuit: 3 qubits
+X(2)
+H(0)
+H(1)
+H(2)
+// Oracle: flip ancilla if x0 XOR x1 = 1
+CNOT(0,2)
+CNOT(1,2)
+H(0)
+H(1)
+measure 0..1
