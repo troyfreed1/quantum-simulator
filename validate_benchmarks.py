@@ -32,10 +32,10 @@ def validate_circuit(circuit_file, expected_file):
     sim, results = run_simulation(circuit_file, noise_mode=False)
 
     if results is None:
-        print("❌ FAILED: No measurement results returned")
+        print("FAILED: No measurement results returned")
         return False
 
-    # Convert to probability distribution
+    # Move to probability distribution
     total_shots = sum(results.values())
     measured_dist = {state: count/total_shots for state, count in results.items()}
 
@@ -43,8 +43,8 @@ def validate_circuit(circuit_file, expected_file):
     for state, prob in sorted(measured_dist.items()):
         print(f"  |{state}⟩: {prob:.3f}")
 
-    # Validate: check all expected states are present with reasonable probability
-    tolerance = 0.15  # Allow ±15% variation due to sampling
+    # check all expected states are present with reasonable probability
+    tolerance = 0.15  # Allowable deviation
 
     passed = True
     for state, expected_prob in expected.items():
@@ -52,7 +52,7 @@ def validate_circuit(circuit_file, expected_file):
         diff = abs(measured_prob - expected_prob)
 
         if diff > tolerance:
-            print(f"\n❌ FAILED for state |{state}⟩:")
+            print(f" FAILED for state |{state}⟩:")
             print(f"   Expected: {expected_prob:.3f}")
             print(f"   Measured: {measured_prob:.3f}")
             print(f"   Difference: {diff:.3f} (tolerance: {tolerance})")
@@ -63,12 +63,12 @@ def validate_circuit(circuit_file, expected_file):
     # Check for unexpected states with significant probability
     for state, prob in measured_dist.items():
         if state not in expected and prob > 0.05:  # >5% probability for unexpected state
-            print(f"\n⚠️  WARNING: Unexpected state |{state}⟩ with {prob:.3f} probability")
+            print(f"\n  WARNING: Unexpected state |{state}⟩ with {prob:.3f} probability")
 
     if passed:
-        print(f"\n✅ PASSED: {circuit_file}")
+        print(f"\n PASSED: {circuit_file}")
     else:
-        print(f"\n❌ FAILED: {circuit_file}")
+        print(f"\n FAILED: {circuit_file}")
 
     return passed
 
@@ -89,10 +89,10 @@ if __name__ == "__main__":
             passed = validate_circuit(circuit_in, circuit_out)
             results.append((circuit_in, passed))
         except FileNotFoundError as e:
-            print(f"\n❌ File not found: {e}")
+            print(f"\n File not found: {e}")
             results.append((circuit_in, False))
         except Exception as e:
-            print(f"\n❌ Error: {e}")
+            print(f"\n Error: {e}")
             results.append((circuit_in, False))
 
     # Summary
@@ -104,14 +104,14 @@ if __name__ == "__main__":
     total_count = len(results)
 
     for circuit, passed in results:
-        status = "✅ PASSED" if passed else "❌ FAILED"
+        status = " PASSED" if passed else " FAILED"
         print(f"{status}: {circuit}")
 
     print(f"\nTotal: {passed_count}/{total_count} tests passed")
 
     if passed_count == total_count:
-        print("\n🎉 All benchmark circuits validated successfully!")
+        print("\n All benchmark circuits validated successfully!")
         sys.exit(0)
     else:
-        print(f"\n⚠️  {total_count - passed_count} test(s) failed")
+        print(f"\n  {total_count - passed_count} test(s) failed")
         sys.exit(1)
