@@ -26,7 +26,7 @@ def benchmark_qubits():
 
         memory_mb = (2 ** n) * 8 / (1024 ** 2)  # complex64 = 8 bytes
 
-        print(f"Qubits: {n:<10} Possible Qubit Comb: {2**n:<15} Elapsed: {elapsed:<12.4f} Memory Used:{memory_mb:<12.2f}")
+        print(f"Qubits: {n:<10} Possible Qubit Combo: {2**n:<15} Elapsed: {elapsed:<12.4f} Memory Used:{memory_mb:<12.2f}")
         results.append((n, 2**n, elapsed, memory_mb))
     print()
     return results
