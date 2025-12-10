@@ -143,7 +143,3 @@ For algorithm design, performance analysis, and optimization details, see the **
 - **H (Hadamard)**: Creates superposition
 - **X (Pauli-X)**: Quantum NOT gate
 - **CNOT**: Controlled-NOT gate
-
-## License
-
-Open source - available for educational purposes.
