@@ -90,9 +90,9 @@ if __name__ == "__main__":
     gate_results = benchmark_gates()
 
     test_circuits = [
-        'test_bell.in',
-        'test_circuit.in',
-        'test_ghz.in'
+        'tests/test_bell.in',
+        'tests/test_circuit.in',
+        'tests/test_ghz.in'
     ]
 
     print("Benchmark 3: Test circuit performance")

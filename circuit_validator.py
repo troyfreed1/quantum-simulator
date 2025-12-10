@@ -75,8 +75,8 @@ def validate_circuit(circuit_file, expected_file):
 
 if __name__ == "__main__":
     test_cases = [
-        ('circuit1.in', 'circuit1.out'),
-        ('circuit2.in', 'circuit2.out'),
+        ('circuits/circuit1.in', 'circuits/circuit1.out'),
+        ('circuits/circuit2.in', 'circuits/circuit2.out'),
     ]
 
     print("="*70)
